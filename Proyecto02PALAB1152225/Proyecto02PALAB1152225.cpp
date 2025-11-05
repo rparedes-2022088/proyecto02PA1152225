@@ -56,6 +56,8 @@ public:
     }
 };
 
+// ---------------- FUNCIONES AUXILIARES ----------------
+
 bool dentro(int x, int y, int n) {
     return x >= 0 && y >= 0 && x < n && y < n;
 }
@@ -64,6 +66,7 @@ bool esTransitable(char c) {
     return c != '#';
 }
 
+// DFS recursivo
 bool tieneCaminoR(Laberinto& l, int x, int y, vector<vector<bool>>& vis, Pos destino) {
     if (x == destino.x && y == destino.y)
         return true;
@@ -177,6 +180,11 @@ void aplicarPocion(Jugador& j, char tipo) {
     else if (tipo == 'M' && j.vida <= 40) j.vida = min(100, j.vida + 60);
 }
 
+
+/// <<< dificultad global
+float dificultad = 1.0f;
+
+
 void moverJugador(Jugador& j, Laberinto& l, char dir) {
     int dx = 0, dy = 0;
     if (dir == 'W') dx = -1;
@@ -194,10 +202,24 @@ void moverJugador(Jugador& j, Laberinto& l, char dir) {
 
     j.pos = { nx, ny };
     char t = l.mapa[nx][ny].tipo;
-    if (t == 'T') { j.vida -= 20; cout << "Trampa activada (-20 vida)\n"; }
-    else if (t == 'O') { j.monedas++; cout << "Encontraste un objeto (+1 moneda)\n"; }
-    else if (t == 'P' || t == 'M') { aplicarPocion(j, t); }
-    else if (t == 'E') { j.vida -= 20; cout << "¡Choque con enemigo! (-20 vida)\n"; }
+
+    if (t == 'T') {
+        int dano = (int)(20 * dificultad);   // <<<
+        j.vida -= dano;
+        cout << "Trampa activada (-" << dano << " vida)\n";
+    }
+    else if (t == 'O') {
+        j.monedas++;
+        cout << "Encontraste un objeto (+1 moneda)\n";
+    }
+    else if (t == 'P' || t == 'M') {
+        aplicarPocion(j, t);
+    }
+    else if (t == 'E') {
+        int dano = (int)(20 * dificultad);   // <<<
+        j.vida -= dano;
+        cout << "¡Choque con enemigo! (-" << dano << " vida)\n";
+    }
 
     l.mapa[nx][ny].tipo = 'J';
 }
@@ -230,7 +252,14 @@ void moverEnemigos(Laberinto& l, Jugador& j, vector<Pos>& enemigos) {
         char destino = l.mapa[nx][ny].tipo;
         if (nx == l.salida.x && ny == l.salida.y) { nx = e.x; ny = e.y; destino = l.mapa[nx][ny].tipo; }
 
-        if (destino == 'J') { j.vida -= 20; cout << "¡Un enemigo te ha atacado! (-20 vida)\n"; nx = e.x; ny = e.y; }
+        if (destino == 'J') {
+            int dano = (int)(20 * dificultad);   // <<<
+            j.vida -= dano;
+            cout << "¡Un enemigo te ha atacado! (-" << dano << " vida)\n";
+            nx = e.x;
+            ny = e.y;
+        }
+
         if (destino != '#' && !(nx == l.salida.x && ny == l.salida.y) && destino != 'E') {
             l.mapa[nx][ny].tipo = 'E'; nuevos.push_back({ nx, ny });
         }
@@ -241,15 +270,43 @@ void moverEnemigos(Laberinto& l, Jugador& j, vector<Pos>& enemigos) {
     enemigos = nuevos;
 }
 
+
+// ---------------- PROGRAMA PRINCIPAL ----------------
+
 int main() {
     srand((unsigned)steady_clock::now().time_since_epoch().count());
-    cout << "=== LABERINTO MAGICO (version DFS recursiva) ===\n";
+
+    cout << "=== LABERINTO MAGICO ===\n";
     cout << "# = Pared\n. = Espacio libre\nT = Trampa (-20 vida)\nO = Objeto (+1 moneda)\n";
     cout << "P = Poción normal (+20 vida si ≤80)\nM = Poción maestra (+60 vida si ≤40)\n";
     cout << "E = Enemigo (-20 vida)\nS = Salida\nJ = Jugador\n\n";
 
+
+    // <<< Selección de dificultad
+    cout << "Selecciona dificultad:\n";
+    cout << "1) Facil\n";
+    cout << "2) Normal\n";
+    cout << "3) Dificil\n";
+    cout << "Opcion: ";
+
+    int dsel;
+    cin >> dsel;
+
+    if (dsel == 1) dificultad = 0.75f;
+    else if (dsel == 3) dificultad = 1.25f;
+    else dificultad = 1.0f;
+
+    cout << "\nDificultad seleccionada: ";
+    if (dsel == 1) cout << "Facil\n";
+    else if (dsel == 3) cout << "Dificil\n";
+    else cout << "Normal\n";
+
+    cin.ignore();
+    // <<<
+
+
     int cambioTiempo = 60;
-    cout << "Ingresa segundos para cambiar el laberinto (45–200, Enter=60): ";
+    cout << "\nIngresa segundos para cambiar el laberinto (45–200, Enter=60): ";
     string entrada; getline(cin, entrada);
     if (entrada != "") {
         int v = 0; bool ok = true;
@@ -275,7 +332,9 @@ int main() {
         }
 
         cout << "\nVida: " << j.vida << " | Monedas: " << j.monedas
-            << " | Cambio en: " << tiempoRestante << "s | Deshacer: " << j.deshacerDisponibles << "\n";
+            << " | Cambio en: " << tiempoRestante << "s"
+            << " | Deshacer: " << j.deshacerDisponibles << "\n";
+
         lab.mostrar();
         cout << "Mover (W/A/S/D), U=deshacer: ";
         char op; cin >> op; op = toupper(op);
